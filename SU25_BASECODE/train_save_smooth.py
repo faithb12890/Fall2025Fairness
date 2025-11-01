@@ -9,6 +9,8 @@ import matplotlib.pyplot as pyplot
 from numpy import linspace
 from tqdm import tqdm
 import math
+from ucimlrepo import fetch_ucirepo
+import pandas as pd
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -36,6 +38,44 @@ model_cnn = nn.Sequential(nn.Conv2d(3, 32, 3, padding=1), nn.ReLU(),
                           Flatten(),
                           nn.Linear(7*7*64, 100), nn.ReLU(),
                           nn.Linear(100, 10)).to(device)
+
+
+# Figuring out how to import uci datasets for use with pytorch
+
+# fetch dataset 
+adult = fetch_ucirepo(id=2) 
+  
+# data (as pandas dataframes) 
+X = adult.data.features 
+y = adult.data.targets 
+  
+# metadata 
+print("\n\nMETADATA")
+print(adult.metadata) 
+  
+# variable information 
+print("\n\nVARIABLES")
+print(adult.variables) 
+
+i = 0
+print("\n\nX IN ADULT")
+for n in X:
+    print(f"X[{i}]:\t{n}")
+    i+=1
+
+i = 0
+print("\n\nY IN ADULT")
+for n in y:
+    print(f"y[{i}]:\t{n}")
+    i+=1
+
+print("\n\nALL OF ADULT")
+print(adult)
+
+print("\n\nADULT DATA")
+print(adult.data)
+
+raise KeyboardInterrupt
 
 
 # Data
