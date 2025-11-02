@@ -90,30 +90,28 @@ class AdultDataset(Dataset):
     '''Creates Adult dataset as Pytorch object from pandas dataframes'''
     def __init__(self, X_dataframe, y_dataframe):
         self.labels = y_dataframe.to_numpy()
-        print("\nself.labels")
-        print(self.labels)
-        self.features = X_dataframe
-        print("\nself.features")
-        print(self.features)
+        self.features = X_dataframe.to_numpy()
 
     def __len__(self):
         return len(self.features)
 
     def __getitem__(self, idx):
-        feature = torch.tensor(self.features[idx], dtype=torch.float32)
-        label = torch.tensor(self.labels[idx], dtype=torch.long)
+        print("\n\n__getitem__")
+        print(self.features[idx])
+        print(self.labels[idx])
+        feature = self.features[idx]
+        label = self.labels[idx]
         return feature, label
     
 
 Adult = AdultDataset(pandasX, pandasy)
-adult_loader = DataLoader(Adult, batch_size=100, shuffle=True)
+adult_loader = DataLoader(Adult, batch_size=50, shuffle=True)
 
 print("\n\nPRINT NEW ADULT DATASET (pytorch)")
 print(Adult.features)
 print(Adult.labels)
 
 print("\n\nPrinting each batch")
-print(adult_loader)
 i = 0
 for X, y in adult_loader:
     print(i)
