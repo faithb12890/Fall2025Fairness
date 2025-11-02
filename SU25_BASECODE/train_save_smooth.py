@@ -40,43 +40,12 @@ model_cnn = nn.Sequential(nn.Conv2d(3, 32, 3, padding=1), nn.ReLU(),
                           nn.Linear(100, 10)).to(device)
 
 
-# Figuring out how to import uci datasets for use with pytorch
-
 # fetch dataset 
 adult = fetch_ucirepo(id=2) 
   
 # data (as pandas dataframes) 
 X = adult.data.features 
 y = adult.data.targets 
-  
-# metadata 
-#print("\n\nMETADATA")
-#print(adult.metadata) 
-  
-#variable information 
-print("\n\nVARIABLES")
-print(adult.variables)
-
-# Changing X0:
-print("\n\n old X.loc[0]")
-print(X.loc[0])
-newX = X.copy(deep = True)
-
-#Update: age to 28, education to 11th, race to Asian-Pac-Islander
-
-newX['age'] = 28
-newX['education'] = '11th'
-newX['race'] = 'Asian-Pac-Islander'
-
-print("\n\n new X.loc[0]")
-print(newX.loc[0])
-
-
-print("\n\n Reprinting old X.loc[0]")
-print(X.loc[0])
-
-raise KeyboardInterrupt
-
 
 # Data
 mnist_train = datasets.CIFAR10("../data", train=True, download=True, transform=transforms.ToTensor())
