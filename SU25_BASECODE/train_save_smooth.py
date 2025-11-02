@@ -50,30 +50,25 @@ X = adult.data.features
 y = adult.data.targets 
   
 # metadata 
-print("\n\nMETADATA")
-print(adult.metadata) 
+#print("\n\nMETADATA")
+#print(adult.metadata) 
   
-# variable information 
+#variable information 
 print("\n\nVARIABLES")
-print(adult.variables) 
+print(adult.variables)
 
-i = 0
-print("\n\nX IN ADULT")
-for n in X:
-    print(f"X[{i}]:\t{n}")
-    i+=1
+# Changing X0:
+print("\n\n old X.loc[0]")
+print(X.loc[0])
+newX = X.copy(deep = True)
+newX.update(pd.Series([28,'11th','Asian-Pac-Islander'],index=['age','education','race']))
 
-i = 0
-print("\n\nY IN ADULT")
-for n in y:
-    print(f"y[{i}]:\t{n}")
-    i+=1
+print("\n\n new X.loc[0]")
+print(newX.loc[0])
 
-print("\n\nALL OF ADULT")
-print(adult)
 
-print("\n\nADULT DATA")
-print(adult.data)
+print("\n\n Reprinting old X.loc[0]")
+print(X.loc[0])
 
 raise KeyboardInterrupt
 
