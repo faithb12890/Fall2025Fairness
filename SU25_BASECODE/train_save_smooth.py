@@ -61,7 +61,12 @@ print(adult.variables)
 print("\n\n old X.loc[0]")
 print(X.loc[0])
 newX = X.copy(deep = True)
-newX.update(pd.Series([28,'11th','Asian-Pac-Islander'],index=['age','education','race']))
+
+#Update: age to 28, education to 11th, race to Asian-Pac-Islander
+
+newX['age'] = 28
+newX['education'] = '11th'
+newX['race'] = 'Asian-Pac-Islander'
 
 print("\n\n new X.loc[0]")
 print(newX.loc[0])
