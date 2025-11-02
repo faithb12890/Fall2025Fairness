@@ -64,7 +64,8 @@ print(pandasX)
 # must create a deep copy, setting things equal creates a view on original object
 print("\n\nold X.loc[0]")
 print(pandasX.loc[0])
-newX = pandasX.copy(deep = True)
+print(type(pandasX.loc[0]))
+newX = pandasX.loc[0].copy(deep = True)
 
 # Update: age to 28, education to 11th, race to Asian-Pac-Islander
 # Series are dict-like (noted in documentation)
@@ -73,8 +74,8 @@ newX['education'] = '11th'
 newX['race'] = 'Asian-Pac-Islander'
 
 # Print updated individual 0
-print("\n\nnew X.loc[0]")
-print(newX.loc[0])
+print("\n\nnewX[0]")
+print(newX)
 
 # Reprint old X.loc[0] to display no change to original data
 print("\n\nReprinting old X.loc[0]")
@@ -98,14 +99,15 @@ class AdultDataset(Dataset):
     def __getitem__(self, idx):
         print("\n\n__getitem__")
         print(self.features[idx])
+        print(type(self.features[idx]))
         print(self.labels[idx])
+        print(type(self.labels[idx]))
         feature = self.features[idx]
         label = self.labels[idx]
         return feature, label
-    
 
 Adult = AdultDataset(pandasX, pandasy)
-adult_loader = DataLoader(Adult, batch_size=50, shuffle=True)
+adult_loader = DataLoader(Adult, batch_size=10, shuffle=True)
 
 print("\n\nPRINT NEW ADULT DATASET (pytorch)")
 print(Adult.features)
@@ -114,5 +116,6 @@ print(Adult.labels)
 print("\n\nPrinting each batch")
 i = 0
 for X, y in adult_loader:
+    print("in for loop!!!")
     print(i)
     i += 1
