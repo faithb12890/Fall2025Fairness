@@ -20,15 +20,15 @@ class Flatten(nn.Module):
 
 # Model definitions
 model_dnn_2 = nn.Sequential(
-    nn.Flatten(), nn.Linear(3072,200), nn.ReLU(), 
-    nn.Linear(200,10)
+    nn.Flatten(), nn.Linear(104,200), nn.ReLU(), 
+    nn.Linear(200,2)
 ).to(device)
 
 model_dnn_4 = nn.Sequential(
-    nn.Flatten(), nn.Linear(3072,200), nn.ReLU(), 
+    nn.Flatten(), nn.Linear(104,200), nn.ReLU(), 
     nn.Linear(200,100), nn.ReLU(),
     nn.Linear(100,100), nn.ReLU(),
-    nn.Linear(100,10)
+    nn.Linear(100,2)
 ).to(device)
 
 model_cnn = nn.Sequential(nn.Conv2d(3, 32, 3, padding=1), nn.ReLU(),
@@ -40,19 +40,35 @@ model_cnn = nn.Sequential(nn.Conv2d(3, 32, 3, padding=1), nn.ReLU(),
                           nn.Linear(100, 10)).to(device)
 
 
-# fetch dataset 
-adult = fetch_ucirepo(id=2) 
-  
-# data (as pandas dataframes) 
-X = adult.data.features 
-y = adult.data.targets 
+
+from adult import Adult
+
+# load (if necessary, download) the Adult training dataset 
+train_set = Adult(root="datasets", download=True)
+# load the test set
+test_set = Adult(root="datasets", train=False, download=True)
+inputs, target = train_set[0]  # retrieve the first sample of the training set
+print(train_set[0])
+print("shape is")
+print(train_set[0][0].shape)
+
+# iterate over the training set
+for inputs, target in iter(train_set):
+    ...  # Do something with a single sample
+
+
+# use a PyTorch data loader0
+from torch.utils.data import DataLoader
+
+train_loader = DataLoader(train_set, batch_size=5, shuffle=True)
+test_loader = DataLoader(test_set, batch_size=5, shuffle=False)
 
 # Data
-mnist_train = datasets.CIFAR10("../data", train=True, download=True, transform=transforms.ToTensor())
+'''mnist_train = datasets.CIFAR10("../data", train=True, download=True, transform=transforms.ToTensor())
 mnist_test = datasets.CIFAR10("../data", train=False, download=True, transform=transforms.ToTensor())
 train_loader = DataLoader(mnist_train, batch_size=100, shuffle=True)
 test_loader = DataLoader(mnist_test, batch_size=100, shuffle=False)
-
+'''
 # PGD attack parameters
 training_epsilon = 0.005  # Maximum perturbation
 epsilon = 0.1  # Maximum perturbation
@@ -140,7 +156,7 @@ def evaluate_clean(model, loader):
             yp = model(X)
             total_err += (yp.max(dim=1)[1] != y).sum().item()
     return 1 - total_err / len(loader.dataset)
-
+ 
 # Model evaluation under PGD attack
 def evaluate_linf(model, loader, epsilon, alpha, num_iter):
     model.eval()
@@ -187,36 +203,36 @@ if __name__ == '__main__':
     opt4 = optim.SGD(model_dnn_4.parameters(), lr=1e-1)
     optcnn = optim.SGD(model_cnn.parameters(), lr=1e-1)
 
-    if not os.path.exists("CIFAR10-DNN2.pt"):
+    if not os.path.exists("Adult-DNN2.pt"):
         for n in range(10):
             # Fix parameter order: loader first, then model
             train_err, train_loss = epoch(train_loader, model_dnn_2, opt2)#, pgd_linf, opt_dnn2, training_epsilon, alpha, num_iter)
             train_acc = 1 - train_err
             print(f"[DNN_2] Epoch {n+1}: Train Accuracy = {train_acc:.4f}, Train Loss = {train_loss:.4f}")
-        torch.save(model_dnn_2.state_dict(), "CIFAR10-DNN2.pt")
+        torch.save(model_dnn_2.state_dict(), "Adult-DNN2.pt")
 
     # Train and save DNN4 if not already saved
-    if not os.path.exists("CIFAR10-DNN4.pt"):
+    if not os.path.exists("Adult-DNN4.pt"):
         for n in range(10):
             # Fix parameter order: loader first, then model
             train_err, train_loss = epoch(train_loader, model_dnn_4, opt4)#, pgd_linf, opt_dnn4, training_epsilon, alpha, num_iter)
             train_acc = 1 - train_err
             print(f"[DNN_4] Epoch {n+1}: Train Accuracy = {train_acc:.4f}, Train Loss = {train_loss:.4f}")
-        torch.save(model_dnn_4.state_dict(), "CIFAR10-DNN4.pt")
+        torch.save(model_dnn_4.state_dict(), "Adult-DNN4.pt")
 
-    if not os.path.exists("CIFAR10-CNN.pt"):
+    if not os.path.exists("Adult-CNN.pt"):
         for n in range(10):
             # Fix parameter order: loader first, then model
             train_err, train_loss = epoch(train_loader, model_dnn_4, optcnn)#, pgd_linf, opt_dnn4, training_epsilon, alpha, num_iter)
             train_acc = 1 - train_err
             print(f"[CNN] Epoch {n+1}: Train Accuracy = {train_acc:.4f}, Train Loss = {train_loss:.4f}")
-        torch.save(model_cnn.state_dict(), "CIFAR10-CNN.pt")
+        torch.save(model_cnn.state_dict(), "Adult-CNN.pt")
 
 
     # Loading save states
-    model_dnn_2.load_state_dict(torch.load("CIFAR10-DNN2.pt", map_location=device, weights_only=True))
-    model_dnn_4.load_state_dict(torch.load("CIFAR10-DNN4.pt", map_location=device, weights_only=True))
-    model_cnn.load_state_dict(torch.load("CIFAR10-CNN.pt", map_location=device, weights_only=True))
+    model_dnn_2.load_state_dict(torch.load("Adult-DNN2.pt", map_location=device, weights_only=True))
+    model_dnn_4.load_state_dict(torch.load("Adult-DNN4.pt", map_location=device, weights_only=True))
+    model_cnn.load_state_dict(torch.load("Adult-CNN.pt", map_location=device, weights_only=True))
 
     # Evaluating and printing results
     for model, name in [
