@@ -11,6 +11,7 @@ from tqdm import tqdm
 import math
 from ucimlrepo import fetch_ucirepo
 import pandas as pd
+from adult import Adult
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -39,36 +40,16 @@ model_cnn = nn.Sequential(nn.Conv2d(3, 32, 3, padding=1), nn.ReLU(),
                           nn.Linear(7*7*64, 100), nn.ReLU(),
                           nn.Linear(100, 10)).to(device)
 
-
-
-from adult import Adult
-
+# Data
 # load (if necessary, download) the Adult training dataset 
 train_set = Adult(root="datasets", download=True)
-# load the test set
 test_set = Adult(root="datasets", train=False, download=True)
-inputs, target = train_set[0]  # retrieve the first sample of the training set
-print(train_set[0])
-print("shape is")
-print(train_set[0][0].shape)
-
-# iterate over the training set
-for inputs, target in iter(train_set):
-    ...  # Do something with a single sample
-
-
-# use a PyTorch data loader0
-from torch.utils.data import DataLoader
-
 train_loader = DataLoader(train_set, batch_size=5, shuffle=True)
 test_loader = DataLoader(test_set, batch_size=5, shuffle=False)
 
-# Data
-'''mnist_train = datasets.CIFAR10("../data", train=True, download=True, transform=transforms.ToTensor())
-mnist_test = datasets.CIFAR10("../data", train=False, download=True, transform=transforms.ToTensor())
-train_loader = DataLoader(mnist_train, batch_size=100, shuffle=True)
-test_loader = DataLoader(mnist_test, batch_size=100, shuffle=False)
-'''
+inputs, target = train_set[0]  # retrieve the first sample of the training set
+
+
 # PGD attack parameters
 training_epsilon = 0.005  # Maximum perturbation
 epsilon = 0.1  # Maximum perturbation
@@ -78,10 +59,6 @@ num_iter = 40 # Number of iterations
 # Define separate optimizers with 
 opt_dnn2 = optim.SGD(model_dnn_2.parameters(), lr=0.1)
 opt_dnn4 = optim.SGD(model_dnn_4.parameters(), lr=0.1)
-
-class Flatten(nn.Module):
-    def forward(self, x):
-        return x.view(x.shape[0], -1)
 
 def epoch(loader, model, opt=None):
     total_loss, total_err = 0., 0.
