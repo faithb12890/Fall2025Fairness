@@ -167,15 +167,10 @@ def smooth_attr_num(X, y, model, idx = 0, n_samples=1000):
     X = X.expand(n_samples, -1)
 
     epsilon = torch.randn(n_samples, device=device)
-    print(epsilon.size())
-    eps_col = epsilon.reshape([n_samples,1])
+    print(epsilon)
     
-    print(eps_col.size())
-    
-
-    print(X[:,0])
-    print(X[:,0].size())
-    X[:,0] = eps_col
+    newX = X.clone()
+    newX[:,0] = newX[:,0] + epsilon
 
     scores = model(X) 
     probs = torch.softmax(scores, dim=1)    
