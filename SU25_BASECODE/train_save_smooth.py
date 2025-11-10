@@ -47,9 +47,6 @@ test_set = Adult(root="datasets", train=False, download=True)
 train_loader = DataLoader(train_set, batch_size=5, shuffle=True)
 test_loader = DataLoader(test_set, batch_size=5, shuffle=False)
 
-inputs, target = train_set[0]  # retrieve the first sample of the training set
-
-
 # PGD attack parameters
 training_epsilon = 0.005  # Maximum perturbation
 epsilon = 0.1  # Maximum perturbation
@@ -219,9 +216,9 @@ if __name__ == '__main__':
     ]:
         
         clean_acc = evaluate_clean(model, test_loader)
-        adv_acc = evaluate_l2(model, test_loader, epsilon, alpha, num_iter)
+        #adv_acc = evaluate_l2(model, test_loader, epsilon, alpha, num_iter)
         print(f"Accuracy of {name} on clean data: {clean_acc:.4f}")
-        print(f"Accuracy of {name} under PGD attack: {adv_acc:.4f}")
+        #print(f"Accuracy of {name} under PGD attack: {adv_acc:.4f}")
 
 # Define ReGU activation function
 def regu(x, sigma=0.1):

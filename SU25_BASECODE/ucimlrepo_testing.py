@@ -32,6 +32,7 @@ print(f"type y: {type(pandasy)}")
   
 
 # X.columns is a list of the variables collected
+
 # object type = Index
 print("\n\nX.columns and type")
 print(pandasX.columns)
