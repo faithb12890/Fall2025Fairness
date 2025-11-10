@@ -22,7 +22,7 @@ def phi_inverse(x, mu):
 # All categorical data turned into True/False for each category
 # Any lists are in order of how they appear in the csv's
 # The Adult data from the installed module is formatted in the following way:
-# Col 0: age (normalized)
+# Col 0: age (normalized to normal gaussian distribution with mean of 0, standard dev of 1)
 # Col 1-7: workclass
 #   [Private, Self-emp-not-inc, Self-emp-inc, Federal-gov, Local-gov, State-gov, Without-pay]
 # Col 8: fnlwgt (normalized)
@@ -49,6 +49,138 @@ def phi_inverse(x, mu):
 # We want to smooth over sex (col 58-59), race (col 53-57) and age (col 0). These are the noted protected attributes.
 # We may also be able to smooth over marital-status (col 26-32) as other fairness sets note this as a protected attribute.
 # We can potentially create sub-smoothing functions that will smooth individual attributes, and a separate smoothing function that will randomly select a subfunctiont to use.
+
+def smooth_all(indiv, model, sigma=0.2, n_samples=1000):
+    '''
+    !!! INCOMPLETE !!!
+    
+    Parent smoothing function that smooths an individual across all chosen 
+    protected attributes. Each sample gets a single randomly selected
+    attribute randomly perturbed.
+
+    Arguments:
+        indiv - the individual to smooth
+        model - the model to be smoothed
+        sigma - the sigma value to use for numeric data smoothing
+        n_samples - the number of samples to generate
+    '''
+    # Create attribute dictionary
+    # Input: number generated randomly, output: list of [attribute type, attribute string]
+    attr_dict = {0: ['bool','race'],
+                 1: ['bool','sex'], 
+                 2: ['bool','marital-status'],
+                 3: ['num','age']}
+
+    # Create variable (type??) of true attributes for individual
+
+    # Create n_samples of the individual to be smoothed
+    indiv = indiv.expand(n_samples, -1)
+
+    # Randomly generate attributes to change
+    change_attr = torch.randint(0,len(attr_dict),(n_samples,))
+
+    # Modify individual
+    for i in range(n_samples):
+        # Get corresponding attribute list, and smooth accordingly
+        attr_list = attr_dict[change_attr[i].item()]
+        if attr_list[0] == 'bool':
+            new_samp = smooth_samp_bool(indiv[i], attr_list[1])
+        elif attr_list[0] == 'num':
+            new_samp = smooth_samp_num(indiv[i], attr_list[1], sigma=sigma)
+        # Replace individual sample with modified versioin
+        indiv[i] = new_samp
+        
+    # Calculate label
+    scores = model(indiv) 
+    probs = torch.softmax(scores, dim=1)    
+    avg_probs = probs.mean(dim=0)           
+    label = torch.argmax(avg_probs)
+
+    return label.item()
+
+
+
+# Single sample smoothing
+# These functions will be called by a parent function that smooths all attributes
+# One numeric and one boolean smoothing function to return a single sample
+
+def smooth_samp_bool(sample, attribute):
+    '''
+    Returns a sample where the selected boolean attribute is randomly perturbed
+
+    Arguments:
+        sample - the provided sample to modify
+        attribute - the selected attribute to modify, as a string used in the dictionary.
+                possible inputs: 'race', 'sex', 'marital-status'
+
+    Returns:
+        mod_samp - modified sample
+    '''
+
+    # Attribute dictionary
+    # Input: attribute name, output: list of [start column, number of attributes]
+    attr_dict = {'race': [53,5],
+                'sex': [58,2], 
+                'marital-status':[26,7]}
+
+    # Clone given sample
+    mod_samp = sample.clone()
+
+    # Get start column corresponding to selected attribute
+    attr_col = attr_dict[attribute]
+
+    # Generate attribute index to turn true
+    change = torch.randint(0,attr_col[1],(1,))
+
+    # Create replacement tensor for attribute
+    replace = torch.zeros(attr_col[1])
+    replace[change] = 1
+
+    # Replace selected attribute with attribute tensor
+    mod_samp[attr_col[0]:attr_col[0]+attr_col[1]] = replace
+
+    return mod_samp
+
+
+def smooth_samp_num(sample, attribute, sigma=0.2):
+    '''
+    Returns a sample where the selected numeric attribute is randomly perturbed
+
+    Arguments:
+        sample - the provided sample to modify
+        attribute - the selected attribute to modify, as a string used in the dictionary.
+                possible inputs: 'age'
+
+    Returns:
+        mod_samp - modified sample
+    '''
+
+    device = sample.device
+
+    # Attribute dictionary
+    # Input: attribute name, output: attribute column
+    attr_dict = {'age':0}
+
+    # Clone given sample
+    mod_samp = sample.clone()
+
+    # Get start column corresponding to selected attribute
+    attr_col = attr_dict[attribute]
+
+    # Generate random perturbation
+    epsilon = torch.randn(1, device=device)
+    epsilon = epsilon*sigma
+
+    # Add perturbation to selected attribute
+    mod_samp[attr_col] += epsilon.item()
+
+    return mod_samp
+
+
+
+
+# Individual smoothing
+# These functions take in an individual and smooth over a single attribute
 
 def smooth_attr_bool(X, y, model, start_idx = 58, num_att = 2, n_samples=1000):
     '''
@@ -94,6 +226,50 @@ def smooth_attr_bool(X, y, model, start_idx = 58, num_att = 2, n_samples=1000):
     #radius = sigma * (phi_inverse(torch.tensor(best_scores.values[0].item()), 0) - phi_inverse(torch.tensor(best_scores.values[1].item()), 0)) / 2
     return label.item()
 
+# Smoothing across numeric data
+
+def smooth_attr_num(X, y, model, idx=0, sigma=0.2, n_samples=1000):
+    '''
+    Function to smooth over a single feature in the Adult dataset. Smooths an
+    individual, not a batch. Smooths over sex by default.
+
+    Note (Faith): May work out how to smooth over batches later- need to replace
+    certain parts of X with a replacement vector. This is easier for now, but may
+    be slower.
+
+    Arguments:
+        X - single individual to smooth
+        y - target attribute
+        model - model to be smoothed
+        idx - column of numeric data to be smoothed
+        n_samples - number of samples for smoothing
+    '''
+
+    device = X.device
+    X = X.expand(n_samples, -1)
+
+    epsilon = torch.randn(n_samples, device=device)
+    epsilon = epsilon*sigma
+    
+    newX = X.clone()
+    newX[:,0] = newX[:,0] + epsilon
+
+    scores = model(X) 
+    probs = torch.softmax(scores, dim=1)    
+    avg_probs = probs.mean(dim=0)           
+    label = torch.argmax(avg_probs)
+    # Need to replace radius calcs
+    #if label != y.item():
+        #radius = 0.0
+        #return label.item(), radius
+    #best_scores = torch.topk(avg_probs, 2)          
+    #radius = sigma * (phi_inverse(torch.tensor(best_scores.values[0].item()), 0) - phi_inverse(torch.tensor(best_scores.values[1].item()), 0)) / 2
+    return label.item()
+
+
+# Batchwise smoothing
+
+
 def smooth_attr_batch(X, y, model, start_idx = 58, num_att = 2, n_samples=1000):
     '''
     INCOMPLETE
@@ -134,47 +310,6 @@ def smooth_attr_batch(X, y, model, start_idx = 58, num_att = 2, n_samples=1000):
     label = torch.argmax(avg_probs)
     print(label)
     print(label.size())
-    # Need to replace radius calcs
-    #if label != y.item():
-        #radius = 0.0
-        #return label.item(), radius
-    #best_scores = torch.topk(avg_probs, 2)          
-    #radius = sigma * (phi_inverse(torch.tensor(best_scores.values[0].item()), 0) - phi_inverse(torch.tensor(best_scores.values[1].item()), 0)) / 2
-    return label.item()
-
-
-
-# Smoothing across numeric data
-
-def smooth_attr_num(X, y, model, idx = 0, n_samples=1000):
-    '''
-    Function to smooth over a single feature in the Adult dataset. Smooths an
-    individual, not a batch. Smooths over sex by default.
-
-    Note (Faith): May work out how to smooth over batches later- need to replace
-    certain parts of X with a replacement vector. This is easier for now, but may
-    be slower.
-
-    Arguments:
-        X - single individual to smooth
-        y - target attribute
-        model - model to be smoothed
-        idx - column of numeric data to be smoothed
-        n_samples - number of samples for smoothing
-    '''
-
-    device = X.device
-    X = X.expand(n_samples, -1)
-
-    epsilon = torch.randn(n_samples, device=device)
-    
-    newX = X.clone()
-    newX[:,0] = newX[:,0] + epsilon
-
-    scores = model(X) 
-    probs = torch.softmax(scores, dim=1)    
-    avg_probs = probs.mean(dim=0)           
-    label = torch.argmax(avg_probs)
     # Need to replace radius calcs
     #if label != y.item():
         #radius = 0.0
