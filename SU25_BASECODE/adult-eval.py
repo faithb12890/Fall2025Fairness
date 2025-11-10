@@ -57,7 +57,11 @@ for X, y in test_loader:
         yp = smooth_attr_num(X[idx], y[idx], model_dnn_2, idx=0, n_samples=500)
         test_results.append(yp==y[idx])
 
+test_acc = sum(test_results)/len(test_results)
 
+print(f"Final smoothed accuracy: {test_acc}")
+
+raise KeyboardInterrupt
 
 test_results = []
 
@@ -70,7 +74,7 @@ for X, y in test_loader:
 test_acc = sum(test_results)/len(test_results)
 
 print(f"Final smoothed accuracy: {test_acc}")
-raise KeyboardInterrupt
+
 
 
 # Boolean smoothing individuals

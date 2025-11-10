@@ -167,7 +167,6 @@ def smooth_attr_num(X, y, model, idx = 0, n_samples=1000):
     X = X.expand(n_samples, -1)
 
     epsilon = torch.randn(n_samples, device=device)
-    print(epsilon)
     
     newX = X.clone()
     newX[:,0] = newX[:,0] + epsilon
