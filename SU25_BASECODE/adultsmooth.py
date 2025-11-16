@@ -52,11 +52,46 @@ def phi_inverse(x, mu):
 
 def smooth_all(indiv, model, sigma=0.2, n_samples=1000):
     '''
-    !!! INCOMPLETE !!!
     
     Parent smoothing function that smooths an individual across all chosen 
-    protected attributes. Each sample gets a single randomly selected
-    attribute randomly perturbed.
+    protected attributes, modifying every attribute per sample. Each sample gets
+    all attributes randomly perturbed.
+
+    Arguments:
+        indiv - the individual to smooth
+        model - the model to be smoothed
+        sigma - the sigma value to use for numeric data smoothing
+        n_samples - the number of samples to generate
+    '''
+    # Create variable (type??) of true attributes for individual
+
+    # Create n_samples of the individual to be smoothed
+    indiv = indiv.expand(n_samples, -1)
+
+    # Modify samples
+    for i in range(n_samples):
+        new_samp = smooth_samp_bool(indiv[i], 'race')
+        new_samp = smooth_samp_bool(new_samp, 'sex')
+        new_samp = smooth_samp_bool(new_samp, 'marital-status')
+        new_samp = smooth_samp_num(new_samp, 'age', sigma=sigma)
+        
+        # Replace individual sample with modified versioin
+        indiv[i] = new_samp
+        
+    # Calculate label
+    scores = model(indiv) 
+    probs = torch.softmax(scores, dim=1)    
+    avg_probs = probs.mean(dim=0)           
+    label = torch.argmax(avg_probs)
+
+    return label.item()
+
+def smooth_one(indiv, model, sigma=0.2, n_samples=1000):
+    '''
+    
+    Parent smoothing function that smooths an individual across all chosen 
+    protected attributes, modifying only one attribute per sample. Each sample
+    gets a single randomly selected attribute randomly perturbed.
 
     Arguments:
         indiv - the individual to smooth
@@ -76,7 +111,7 @@ def smooth_all(indiv, model, sigma=0.2, n_samples=1000):
     # Create n_samples of the individual to be smoothed
     indiv = indiv.expand(n_samples, -1)
 
-    # Randomly generate attributes to change
+    # Randomly generate attributes to change. Equal probability of each.
     change_attr = torch.randint(0,len(attr_dict),(n_samples,))
 
     # Modify individual
