@@ -33,9 +33,12 @@ model_dnn_4 = nn.Sequential(
     nn.Linear(100,2)
 ).to(device)
 
-model_dnn_2.load_state_dict(torch.load("SU25_BASECODE/models/Adult-DNN2.pt", map_location=device, weights_only=True))
-model_dnn_4.load_state_dict(torch.load("SU25_BASECODE/models/Adult-DNN4.pt", map_location=device, weights_only=True))
+#(liv Runs)
+#model_dnn_2.load_state_dict(torch.load("SU25_BASECODE/models/Adult-DNN2.pt", map_location=device, weights_only=True))
+#model_dnn_4.load_state_dict(torch.load("SU25_BASECODE/models/Adult-DNN4.pt", map_location=device, weights_only=True))
 
+model_dnn_2.load_state_dict(torch.load("Adult-DNN2.pt", map_location=device, weights_only=True))
+model_dnn_4.load_state_dict(torch.load("Adult-DNN4.pt", map_location=device, weights_only=True))
 
 # Data
 train_set = Adult(root="datasets", download=True)
