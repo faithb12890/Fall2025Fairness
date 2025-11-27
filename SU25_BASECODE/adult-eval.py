@@ -33,8 +33,8 @@ model_dnn_4 = nn.Sequential(
     nn.Linear(100,2)
 ).to(device)
 
-model_dnn_2.load_state_dict(torch.load("Adult-DNN2.pt", map_location=device, weights_only=True))
-model_dnn_4.load_state_dict(torch.load("Adult-DNN4.pt", map_location=device, weights_only=True))
+model_dnn_2.load_state_dict(torch.load("SU25_BASECODE/models/Adult-DNN2.pt", map_location=device, weights_only=True))
+model_dnn_4.load_state_dict(torch.load("SU25_BASECODE/models/Adult-DNN4.pt", map_location=device, weights_only=True))
 
 
 # Data
@@ -55,7 +55,7 @@ correct_rates = torch.empty((0, 3), dtype=torch.float32)
 for X, y in test_loader:
     for idx in range(len(X)):
         sex = torch.argmax(X[idx][58:60])
-        yp = smooth_all(X[idx], model_dnn_2, sigma=0.2, n_samples=500)
+        yp = smooth_all(X[idx], model_dnn_2, sigma=0.2, n_samples=5)
         test_results.append(yp==y[idx])
         correct_rates = torch.cat((correct_rates, torch.tensor([[sex, yp, y[idx].item()]])), dim=0)
 
@@ -63,48 +63,112 @@ test_acc = sum(test_results)/len(test_results)
 
 print(f"Final smoothed accuracy: {test_acc}")
 
-# columns:
-# 0 = sex (0=male, 1=female)
-# 1 = predicted label (yp)
-# 2 = true label (y)
+def _confusion_counts(mask, pred, true):
+    """Return tn, fp, fn, tp, n for a boolean mask."""
+    g_pred = pred[mask]
+    g_true = true[mask]
+    tn = ((g_pred == 0) & (g_true == 0)).sum().item()
+    fp = ((g_pred == 1) & (g_true == 0)).sum().item()
+    fn = ((g_pred == 0) & (g_true == 1)).sum().item()
+    tp = ((g_pred == 1) & (g_true == 1)).sum().item()
+    n = tn + fp + fn + tp
+    return tn, fp, fn, tp, n
 
-# split by sex
-men_mask = correct_rates[:, 0] == 0
-women_mask = correct_rates[:, 0] == 1
 
-num_men = men_mask.sum().item()
-num_women = women_mask.sum().item()
+def report_by_binary_attribute(correct_rates, attr_col=0, group_names=("Group 0", "Group 1")):
+    """
+    correct_rates: tensor with columns:
+        0 = attribute (0 or 1)
+        1 = predicted label
+        2 = true label
+    """
+    attr = correct_rates[:, attr_col]
+    pred = correct_rates[:, 1]
+    true = correct_rates[:, 2]
+    for value, name in enumerate(group_names):
+        mask = (attr == value)
+        if mask.sum().item() == 0:
+            print(f"{name}: no samples")
+            continue
+        tn, fp, fn, tp, n = _confusion_counts(mask, pred, true)
+        print(f"{name} results (N = {n}):")
+        print(f"  True Negative (00): {tn / n:.4f}")
+        print(f"  False Negative (01): {fn / n:.4f}")
+        print(f"  False Positive (10): {fp / n:.4f}")
+        print(f"  True Positive (11): {tp / n:.4f}")
+        print()
 
-print(f"# men = {num_men}")
-print(f"# women = {num_women}")
 
-# outcomes for women
-pred = correct_rates[:, 1]
-true = correct_rates[:, 2]
+def fairness_metrics(correct_rates, attr_col=0):
+    """
+    Computes standard group fairness metrics.
+    Returns:
+        metrics: {group_value: {TPR, FPR, FNR, PPR, Accuracy}}
+        diffs:   {metric_name: |metric_group0 - metric_group1|}
+    """
+    attr = correct_rates[:, attr_col]
+    pred = correct_rates[:, 1]
+    true = correct_rates[:, 2]
+    metrics = {}
+    for group in [0, 1]:
+        mask = (attr == group)
+        tn, fp, fn, tp, n = _confusion_counts(mask, pred, true)
+        if n == 0:
+            metrics[group] = None
+            continue
+        tpr = tp / (tp + fn + 1e-8)          # True Positive Rate
+        fpr = fp / (fp + tn + 1e-8)          # False Positive Rate
+        fnr = fn / (fn + tp + 1e-8)          # False Negative Rate
+        ppr = (tp + fp) / (n + 1e-8)         # Positive Prediction Rate
+        acc = (tp + tn) / (n + 1e-8)         # Accuracy
+        metrics[group] = {
+            "TPR": tpr,
+            "FPR": fpr,
+            "FNR": fnr,
+            "PPR": ppr,
+            "Accuracy": acc,
+        }
 
-tn_w = ((pred == 0) & (true == 0) & women_mask).sum().item()  # 00
-fn_w = ((pred == 0) & (true == 1) & women_mask).sum().item()  # 01
-fp_w = ((pred == 1) & (true == 0) & women_mask).sum().item()  # 10
-tp_w = ((pred == 1) & (true == 1) & women_mask).sum().item()  # 11
+    if metrics[0] is not None and metrics[1] is not None:
+        diffs = {m: abs(metrics[0][m] - metrics[1][m]) for m in metrics[0]}
+    else:
+        diffs = None
+    return metrics, diffs
 
-print("Women results:")
-print(f"  True Negative Women (00): {tn_w/num_women}")
-print(f"  False Negative Women(01): {fn_w/num_women}")
-print(f"  False Positive Women (10): {fp_w/num_women}")
-print(f"  True Positive Women (11): {tp_w/num_women}")
 
-tn_m = ((pred == 0) & (true == 0) & men_mask).sum().item()  # 00
-fn_m = ((pred == 0) & (true == 1) & men_mask).sum().item()  # 01
-fp_m = ((pred == 1) & (true == 0) & men_mask).sum().item()  # 10
-tp_m = ((pred == 1) & (true == 1) & men_mask).sum().item()  # 11
+report_by_binary_attribute(correct_rates,attr_col=0,group_names=("Women", "Men") ) # group 0 == women, 1 == men)
 
-print("Men results:")
-print(f"  True Negative Men (00): {tn_m/num_men}")
-print(f"  False Negative Men(01): {fn_m/num_men}")
-print(f"  False Positive Men (10): {fp_m/num_men}")
-print(f"  True Positive Men (11): {tp_m/num_men}")
+metrics, diffs = fairness_metrics(correct_rates)
+
+print("Men metrics:", metrics[0])
+print("Women metrics:", metrics[1])
+print("Differences:", diffs)
+
+metrics, diffs = fairness_metrics(correct_rates)
+
+print("Men metrics:", metrics[0])
+print("Women metrics:", metrics[1])
+print("Differences:", diffs)
+
+#Accuracy sanity check 
+attr = correct_rates[:, 0]
+n0 = (attr == 0).sum().item()
+n1 = (attr == 1).sum().item()
+N = n0 + n1
+
+acc0 = metrics[0]["Accuracy"]
+acc1 = metrics[1]["Accuracy"]
+
+weighted_acc = (acc0 * n0 + acc1 * n1) / N
+
+print(f"\nSanity check:")
+print(f"  Overall test_acc        = {test_acc:.6f}")
+print(f"  Weighted group accuracy = {weighted_acc:.6f}")
+print(f"  Difference              = {abs(test_acc - weighted_acc):.6e}")
+
 
 raise KeyboardInterrupt
+
 
 test_results = []
 
