@@ -34,11 +34,11 @@ model_dnn_4 = nn.Sequential(
 ).to(device)
 
 #(liv Runs)
-#model_dnn_2.load_state_dict(torch.load("SU25_BASECODE/models/Adult-DNN2.pt", map_location=device, weights_only=True))
-#model_dnn_4.load_state_dict(torch.load("SU25_BASECODE/models/Adult-DNN4.pt", map_location=device, weights_only=True))
+model_dnn_2.load_state_dict(torch.load("SU25_BASECODE/models/Adult-DNN2.pt", map_location=device, weights_only=True))
+model_dnn_4.load_state_dict(torch.load("SU25_BASECODE/models/Adult-DNN4.pt", map_location=device, weights_only=True))
 
-model_dnn_2.load_state_dict(torch.load("Adult-DNN2.pt", map_location=device, weights_only=True))
-model_dnn_4.load_state_dict(torch.load("Adult-DNN4.pt", map_location=device, weights_only=True))
+#model_dnn_2.load_state_dict(torch.load("Adult-DNN2.pt", map_location=device, weights_only=True))
+#model_dnn_4.load_state_dict(torch.load("Adult-DNN4.pt", map_location=device, weights_only=True))
 
 # Data
 train_set = Adult(root="datasets", download=True)
@@ -58,7 +58,7 @@ correct_rates = torch.empty((0, 3), dtype=torch.float32)
 for X, y in test_loader:
     for idx in range(len(X)):
         sex = torch.argmax(X[idx][58:60])
-        yp = smooth_all(X[idx], model_dnn_2, sigma=0.2, n_samples=5)
+        yp = smooth_all(X[idx], model_dnn_2, sigma=0.2, n_samples=50)
         test_results.append(yp==y[idx])
         correct_rates = torch.cat((correct_rates, torch.tensor([[sex, yp, y[idx].item()]])), dim=0)
 
