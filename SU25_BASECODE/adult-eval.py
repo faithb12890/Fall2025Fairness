@@ -12,7 +12,7 @@ import math
 from ucimlrepo import fetch_ucirepo
 import pandas as pd
 from adult import Adult
-from  adultsmooth import smooth_attr_bool, smooth_attr_batch, smooth_attr_num, smooth_all
+from  adultsmooth import smooth_attr_bool, smooth_norm_batch, smooth_attr_num, smooth_all
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -34,11 +34,11 @@ model_dnn_4 = nn.Sequential(
 ).to(device)
 
 #(liv Runs)
-model_dnn_2.load_state_dict(torch.load("SU25_BASECODE/models/Adult-DNN2.pt", map_location=device, weights_only=True))
-model_dnn_4.load_state_dict(torch.load("SU25_BASECODE/models/Adult-DNN4.pt", map_location=device, weights_only=True))
+model_dnn_2.load_state_dict(torch.load("Adult-Norm-DNN2.pt", map_location=device, weights_only=True))
+model_dnn_4.load_state_dict(torch.load("Adult-Norm-DNN4.pt", map_location=device, weights_only=True))
 
-#model_dnn_2.load_state_dict(torch.load("Adult-DNN2.pt", map_location=device, weights_only=True))
-#model_dnn_4.load_state_dict(torch.load("Adult-DNN4.pt", map_location=device, weights_only=True))
+model_dnn_2.load_state_dict(torch.load("Adult-Norm-DNN2.pt", map_location=device, weights_only=True))
+model_dnn_4.load_state_dict(torch.load("Adult-Norm-DNN4.pt", map_location=device, weights_only=True))
 
 # Data
 train_set = Adult(root="datasets", download=True)
@@ -46,6 +46,12 @@ test_set = Adult(root="datasets", train=False, download=True)
 train_loader = DataLoader(train_set, batch_size=10, shuffle=True)
 test_loader = DataLoader(test_set, batch_size=10, shuffle=False)
 
+
+# Evaluation of batch based smoothing
+for X, y in test_loader:
+    Xnorm, Xmod = smooth_norm_batch(X, smooth = True)
+    yp = model_dnn_2(Xmod)  # Shape:
+    print(yp.shape)
 
 # Begin testing evaluation
 # Probably gonna want to turn this into a function later
@@ -168,33 +174,3 @@ print(f"\nSanity check:")
 print(f"  Overall test_acc        = {test_acc:.6f}")
 print(f"  Weighted group accuracy = {weighted_acc:.6f}")
 print(f"  Difference              = {abs(test_acc - weighted_acc):.6e}")
-
-
-raise KeyboardInterrupt
-
-
-test_results = []
-
-for X, y in test_loader:
-    yp = smooth_attr_batch(X, y, model_dnn_2, start_idx=58, num_att=2, n_samples=500)
-    resulttemp = yp==y
-    test_results.append(resulttemp)
-    raise KeyboardInterrupt
-
-test_acc = sum(test_results)/len(test_results)
-
-print(f"Final smoothed accuracy: {test_acc}")
-
-
-
-# Boolean smoothing individuals
-test_results = []
-
-for X, y in test_loader:
-    for idx in range(len(X)):
-        yp = smooth_attr_bool(X[idx], y[idx], model_dnn_2, start_idx=58, num_att=2, n_samples=500)
-        test_results.append(yp==y[idx])
-
-test_acc = sum(test_results)/len(test_results)
-
-print(f"Final smoothed accuracy: {test_acc}")

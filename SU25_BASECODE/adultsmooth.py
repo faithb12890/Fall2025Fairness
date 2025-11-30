@@ -17,6 +17,43 @@ from adult import Adult
 def phi_inverse(x, mu):
     return mu + torch.sqrt(torch.tensor(2)) * torch.erfinv(2 * x - 1)
 
+# Means from data (from ave_stdev_finder)
+mu = torch.tensor([-1.7706e-09,  7.3888e-01,  8.2853e-02,  3.5608e-02,  3.1265e-02,
+         6.8530e-02,  4.2404e-02,  4.6416e-04, -9.4855e-10,  1.6723e-01,
+         2.2140e-01,  3.4746e-02,  3.2624e-01,  1.7970e-02,  3.3420e-02,
+         4.3333e-02,  1.5085e-02,  1.8467e-02,  1.2499e-02,  5.3942e-02,
+         5.0063e-03,  2.7187e-02,  1.2433e-02,  9.5484e-03,  1.4919e-03,
+         5.0589e-09,  4.6632e-01,  1.3971e-01,  3.2246e-01,  3.1132e-02,
+         2.7419e-02,  1.2267e-02,  6.9624e-04,  3.0237e-02,  1.3361e-01,
+         1.0649e-01,  1.1883e-01,  1.3235e-01,  1.3388e-01,  4.4758e-02,
+         6.5181e-02,  1.2337e-01,  3.2790e-02,  5.2119e-02,  4.7411e-03,
+         2.1351e-02,  2.9839e-04,  4.6615e-02,  1.4807e-01,  4.1320e-01,
+         2.5615e-01,  2.9474e-02,  1.0649e-01,  8.5979e-01,  2.9673e-02,
+         9.4821e-03,  7.6586e-03,  9.3396e-02,  3.2432e-01,  6.7568e-01,
+         1.0877e-08, -8.6002e-09, -9.8649e-09,  9.1188e-01,  5.9678e-04,
+         2.8513e-03,  3.6138e-03,  3.5475e-03,  4.2438e-03,  4.6416e-04,
+         3.3154e-03,  1.9561e-03,  9.6147e-04,  2.3540e-03,  2.2545e-03,
+         3.0502e-03,  1.3925e-03,  3.9785e-04,  6.2330e-03,  2.2545e-03,
+         1.8566e-03,  2.6523e-03,  2.1219e-03,  2.0224e-02,  1.1272e-03,
+         7.9570e-04,  8.9517e-04,  2.2213e-03,  5.6362e-04,  8.9517e-04,
+         1.3925e-03,  1.3925e-03,  1.8566e-03,  4.3101e-04,  2.0887e-03,
+         1.0941e-03,  3.6470e-04,  5.6362e-04,  5.3047e-04,  3.3154e-03,
+         5.9678e-04,  9.9463e-04,  6.2993e-04,  3.3154e-05])
+
+# Std devs from data (from ave_stdev_finder)
+sigs = torch.tensor([1.0000, 0.4393, 0.2757, 0.1853, 0.1740, 0.2527, 0.2015, 0.0215, 1.0000,
+        0.3732, 0.4152, 0.1831, 0.4688, 0.1328, 0.1797, 0.2036, 0.1219, 0.1346,
+        0.1111, 0.2259, 0.0706, 0.1626, 0.1108, 0.0973, 0.0386, 1.0000, 0.4989,
+        0.3467, 0.4674, 0.1737, 0.1633, 0.1101, 0.0264, 0.1712, 0.3402, 0.3085,
+        0.3236, 0.3389, 0.3405, 0.2068, 0.2468, 0.3289, 0.1781, 0.2223, 0.0687,
+        0.1446, 0.0173, 0.2108, 0.3552, 0.4924, 0.4365, 0.1691, 0.3085, 0.3472,
+        0.1697, 0.0969, 0.0872, 0.2910, 0.4681, 0.4681, 1.0000, 1.0000, 1.0000,
+        0.2835, 0.0244, 0.0533, 0.0600, 0.0595, 0.0650, 0.0215, 0.0575, 0.0442,
+        0.0310, 0.0485, 0.0474, 0.0551, 0.0373, 0.0199, 0.0787, 0.0474, 0.0430,
+        0.0514, 0.0460, 0.1408, 0.0336, 0.0282, 0.0299, 0.0471, 0.0237, 0.0299,
+        0.0373, 0.0373, 0.0430, 0.0208, 0.0457, 0.0331, 0.0191, 0.0237, 0.0230,
+        0.0575, 0.0244, 0.0315, 0.0251, 0.0058])
+
 # Smoothing function from train_save_smooth
 # To be adapted to smooth for Adult dataset
 # All categorical data turned into True/False for each category
@@ -83,6 +120,7 @@ def smooth_all(indiv, model, sigma=0.2, n_samples=1000):
     probs = torch.softmax(scores, dim=1)    
     avg_probs = probs.mean(dim=0)           
     label = torch.argmax(avg_probs)
+    # Calc best scores and radius!!!
 
     return label.item()
 
@@ -305,50 +343,33 @@ def smooth_attr_num(X, y, model, idx=0, sigma=0.2, n_samples=1000):
 # Batchwise smoothing
 
 
-def smooth_attr_batch(X, y, model, start_idx = 58, num_att = 2, n_samples=1000):
+def smooth_norm_batch(X, smooth = False, sigma = 0.2, n_samples=1000):
     '''
-    INCOMPLETE
-
-    Function to smooth over a single feature in the Adult dataset. Smooths a
-    batch. Smooths over sex by default.
+    Function to normalize and smooth individuals.
 
     Arguments:
-        X - single individual to smooth
-        y - target attribute
+        X - batch of individuals to smooth
         model - model to be smoothed
         start_idx - first column of true/false attribute
         num_att - total number of options for attribute
         n_samples - number of samples for smoothing
+
+    Returns:
+        Xnorm - normalized batch of individuals
+        Xmod - modified batch of individuals
     '''
-    X = X.expand(n_samples, -1, -1)
-    end = start_idx+num_att # First column that isn't related to the categorical variable to be smoothed
 
-    # Randomly generate smoothed attribute
-    change = torch.randint(0,num_att,(n_samples,10))
+    mu_batch = mu.expand(len(X),-1)     # Shape: [batch size, 104]
+    sigs_batch = sigs.expand(len(X),-1) # Shape: [batch size, 104]
 
-    # Create replacement tensor 
-    replace = torch.zeros(n_samples,len(X[0]),num_att)
+    # Normalizing data
+    Xnorm = X - mu_batch
+    Xnorm = torch.div(Xnorm,sigs_batch)
 
-    # Turn selected attribute in replacement tensor true
-    for i in range(len(change)):
-        for j in range(len(change[i])):
-            replace[i][j][change[i,j]] = 1
-
-    # Replace attributes with smoothed versions
-    smoothX = X.clone()
-    smoothX[:,:, start_idx:end] = replace
-    print(smoothX.size())
-
-    scores = model(X) 
-    probs = torch.softmax(scores, dim=1)    
-    avg_probs = probs.mean(dim=0)           
-    label = torch.argmax(avg_probs)
-    print(label)
-    print(label.size())
-    # Need to replace radius calcs
-    #if label != y.item():
-        #radius = 0.0
-        #return label.item(), radius
-    #best_scores = torch.topk(avg_probs, 2)          
-    #radius = sigma * (phi_inverse(torch.tensor(best_scores.values[0].item()), 0) - phi_inverse(torch.tensor(best_scores.values[1].item()), 0)) / 2
-    return label.item()
+    if smooth == False:
+        return Xnorm
+    else:
+        Xnorm = Xnorm.expand(n_samples,-1,-1) # Shape: [1000, batch size, 104]
+        epsilon = torch.rand_like(Xnorm)
+        Xmod = Xnorm + epsilon
+        return Xnorm, Xmod

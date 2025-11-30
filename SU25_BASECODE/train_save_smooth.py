@@ -12,6 +12,7 @@ import math
 from ucimlrepo import fetch_ucirepo
 import pandas as pd
 from adult import Adult
+from adultsmooth import smooth_norm_batch
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -61,7 +62,8 @@ def epoch(loader, model, opt=None):
     total_loss, total_err = 0., 0.
     for X, y in tqdm(loader, desc="Epoch Progress"):
         X, y = X.to(device), y.to(device)
-        yp = model(X)
+        Xnorm = smooth_norm_batch(X, smooth=False)
+        yp = model(Xnorm)
         loss = nn.CrossEntropyLoss()(yp, y)
         if opt:
             opt.zero_grad()
@@ -175,44 +177,44 @@ if __name__ == '__main__':
     # Train and save DNN2 if not already saved
     opt2 = optim.SGD(model_dnn_2.parameters(), lr=1e-1)
     opt4 = optim.SGD(model_dnn_4.parameters(), lr=1e-1)
-    optcnn = optim.SGD(model_cnn.parameters(), lr=1e-1)
+    #optcnn = optim.SGD(model_cnn.parameters(), lr=1e-1)
 
-    if not os.path.exists("Adult-DNN2.pt"):
+    if not os.path.exists("Adult-Norm-DNN2.pt"):
         for n in range(10):
             # Fix parameter order: loader first, then model
             train_err, train_loss = epoch(train_loader, model_dnn_2, opt2)#, pgd_linf, opt_dnn2, training_epsilon, alpha, num_iter)
             train_acc = 1 - train_err
             print(f"[DNN_2] Epoch {n+1}: Train Accuracy = {train_acc:.4f}, Train Loss = {train_loss:.4f}")
-        torch.save(model_dnn_2.state_dict(), "Adult-DNN2.pt")
+        torch.save(model_dnn_2.state_dict(), "Adult-Norm-DNN2.pt")
 
     # Train and save DNN4 if not already saved
-    if not os.path.exists("Adult-DNN4.pt"):
+    if not os.path.exists("Adult-Norm-DNN4.pt"):
         for n in range(10):
             # Fix parameter order: loader first, then model
             train_err, train_loss = epoch(train_loader, model_dnn_4, opt4)#, pgd_linf, opt_dnn4, training_epsilon, alpha, num_iter)
             train_acc = 1 - train_err
             print(f"[DNN_4] Epoch {n+1}: Train Accuracy = {train_acc:.4f}, Train Loss = {train_loss:.4f}")
-        torch.save(model_dnn_4.state_dict(), "Adult-DNN4.pt")
+        torch.save(model_dnn_4.state_dict(), "Adult-Norm-DNN4.pt")
 
-    if not os.path.exists("Adult-CNN.pt"):
+    '''if not os.path.exists("Adult-Norm-CNN.pt"):
         for n in range(10):
             # Fix parameter order: loader first, then model
             train_err, train_loss = epoch(train_loader, model_dnn_4, optcnn)#, pgd_linf, opt_dnn4, training_epsilon, alpha, num_iter)
             train_acc = 1 - train_err
             print(f"[CNN] Epoch {n+1}: Train Accuracy = {train_acc:.4f}, Train Loss = {train_loss:.4f}")
-        torch.save(model_cnn.state_dict(), "Adult-CNN.pt")
+        torch.save(model_cnn.state_dict(), "Adult-Norm-CNN.pt")'''
 
 
     # Loading save states
     model_dnn_2.load_state_dict(torch.load("Adult-DNN2.pt", map_location=device, weights_only=True))
     model_dnn_4.load_state_dict(torch.load("Adult-DNN4.pt", map_location=device, weights_only=True))
-    model_cnn.load_state_dict(torch.load("Adult-CNN.pt", map_location=device, weights_only=True))
+    #model_cnn.load_state_dict(torch.load("Adult-CNN.pt", map_location=device, weights_only=True))
 
     # Evaluating and printing results
     for model, name in [
         (model_dnn_2, "DNN_2"),
-        (model_dnn_4, "DNN_4"),
-        (model_cnn, "CNN")
+        (model_dnn_4, "DNN_4")#,
+        #(model_cnn, "CNN")
     ]:
         
         clean_acc = evaluate_clean(model, test_loader)
