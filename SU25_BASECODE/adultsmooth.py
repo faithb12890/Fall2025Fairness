@@ -361,6 +361,12 @@ def smooth_norm_batch(X, smooth = False, sigma = 0.2, n_samples=1000):
 
     mu_batch = mu.expand(len(X),-1)     # Shape: [batch size, 104]
     sigs_batch = sigs.expand(len(X),-1) # Shape: [batch size, 104]
+    # Selecting variables to smooth over
+    smoothvars = torch.zeros(103)
+    smoothvars[0] = 1       # age
+    smoothvars[26:33] = 1   # marital-status
+    smoothvars[53:58] = 1   # race
+    smoothvars[58:60] = 1   # sex
 
     # Normalizing data
     Xnorm = X - mu_batch
@@ -375,7 +381,7 @@ def smooth_norm_batch(X, smooth = False, sigma = 0.2, n_samples=1000):
             X = X.expand(n_samples,-1)  # Shape: [n_samples, 104]
             X = X.expand(1,-1,-1)       # Shape: [1, n_samples, 104]
             Xnorm_array = torch.cat((Xnorm_array,X),0)  # Shape: [batch size, n_samples, 104]
-            epsilon = sigma*torch.rand_like(X)
+            epsilon = (sigma*torch.rand_like(X))*smoothvars
             X = X + epsilon
             Xmod_array = torch.cat((Xmod_array,X),0)    # Shape: [batch size, n_samples, 104]
             

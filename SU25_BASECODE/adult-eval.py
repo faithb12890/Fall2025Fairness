@@ -81,9 +81,9 @@ def smooth_eval():
             if label != ytrue.item():
                 radius = 0.0
         
-        radii_all.append(radii)
-        yp_all.append(yp)
-        ytrue_all.append(y.tolist())
+        radii_all.extend(radii)
+        yp_all.extend(yp)
+        ytrue_all.extend(y.tolist())
         Xnorm_all = torch.cat((Xnorm_all,Xnorm),0)
         Xmod_all = torch.cat((Xmod_all,Xmod),0)
     
@@ -92,9 +92,7 @@ def smooth_eval():
 Xnorm, Xmod, yp, y, radii = smooth_eval()
 print(yp)
 print(len(yp))
-print(len(yp[0]))
 print(len(radii))
-print(len(radii[0]))
 print(f"ACR: {sum(radii)/len(radii)}")
 
 raise KeyboardInterrupt
