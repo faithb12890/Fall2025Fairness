@@ -369,7 +369,14 @@ def smooth_norm_batch(X, smooth = False, sigma = 0.2, n_samples=1000):
     if smooth == False:
         return Xnorm
     else:
-        Xnorm = Xnorm.expand(n_samples,-1,-1) # Shape: [1000, batch size, 104]
-        epsilon = torch.rand_like(Xnorm)
-        Xmod = Xnorm + epsilon
-        return Xnorm, Xmod
+        Xnorm_array = torch.tensor([])
+        Xmod_array = torch.tensor([])
+        for X in Xnorm:
+            X = X.expand(n_samples,-1)  # Shape: [n_samples, 104]
+            X = X.expand(1,-1,-1)       # Shape: [1, n_samples, 104]
+            Xnorm_array = torch.cat((Xnorm_array,X),0)  # Shape: [batch size, n_samples, 104]
+            epsilon = sigma*torch.rand_like(X)
+            X = X + epsilon
+            Xmod_array = torch.cat((Xmod_array,X),0)    # Shape: [batch size, n_samples, 104]
+            
+        return Xnorm_array, Xmod_array

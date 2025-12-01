@@ -33,12 +33,16 @@ model_dnn_4 = nn.Sequential(
     nn.Linear(100,2)
 ).to(device)
 
-#(liv Runs)
-model_dnn_2.load_state_dict(torch.load("Adult-Norm-DNN2.pt", map_location=device, weights_only=True))
-model_dnn_4.load_state_dict(torch.load("Adult-Norm-DNN4.pt", map_location=device, weights_only=True))
+# Inverse of the Gaussian CDF
+def phi_inverse(x, mu):
+    return mu + torch.sqrt(torch.tensor(2)) * torch.erfinv(2 * x - 1)
 
-model_dnn_2.load_state_dict(torch.load("Adult-Norm-DNN2.pt", map_location=device, weights_only=True))
-model_dnn_4.load_state_dict(torch.load("Adult-Norm-DNN4.pt", map_location=device, weights_only=True))
+#(liv Runs)
+model_dnn_2.load_state_dict(torch.load("Fall2025Fairness/SU25_BASECODE/models/Adult-Norm-DNN2.pt", map_location=device, weights_only=True))
+model_dnn_4.load_state_dict(torch.load("Fall2025Fairness/SU25_BASECODE/models/Adult-Norm-DNN4.pt", map_location=device, weights_only=True))
+
+#model_dnn_2.load_state_dict(torch.load("Fall2025Fairness/models/Adult-Norm-DNN2.pt", map_location=device, weights_only=True))
+#model_dnn_4.load_state_dict(torch.load("Fall2025Fairness/models/Adult-Norm-DNN4.pt", map_location=device, weights_only=True))
 
 # Data
 train_set = Adult(root="datasets", download=True)
@@ -48,10 +52,53 @@ test_loader = DataLoader(test_set, batch_size=10, shuffle=False)
 
 
 # Evaluation of batch based smoothing
-for X, y in test_loader:
-    Xnorm, Xmod = smooth_norm_batch(X, smooth = True)
-    yp = model_dnn_2(Xmod)  # Shape:
-    print(yp.shape)
+def smooth_eval():
+    Xnorm_all = torch.tensor([])
+    Xmod_all = torch.tensor([])
+    yp_all = []
+    radii_all = []
+    ytrue_all = []
+    x = 0
+    for X, y in test_loader:
+        sigma = 0.2
+        n_samples = 1000
+        batch = len(X)
+        Xnorm, Xmod = smooth_norm_batch(X, smooth = True, sigma=sigma, n_samples=n_samples)
+        # Note: Xnorm, Xmod both [batch size, n_samples, 104]
+        yp = []
+        radii = []
+
+        for X, ytrue in zip(Xmod, y):
+            probs = torch.softmax(model_dnn_2(X), dim=1)  # Shape: [1000,2]
+            avg_probs = probs.mean(dim=0)        
+            label = torch.argmax(avg_probs)
+            best_scores = torch.topk(avg_probs, 2)          
+            radius = sigma * (phi_inverse(torch.tensor(best_scores.values[0].item()), 0) - phi_inverse(torch.tensor(best_scores.values[1].item()), 0)) / 2
+            radii.append(radius.item())
+            yp.append(label.item())
+            
+            
+            if label != ytrue.item():
+                radius = 0.0
+        
+        radii_all.append(radii)
+        yp_all.append(yp)
+        ytrue_all.append(y.tolist())
+        Xnorm_all = torch.cat((Xnorm_all,Xnorm),0)
+        Xmod_all = torch.cat((Xmod_all,Xmod),0)
+    
+    return Xnorm_all, Xmod_all, yp_all, ytrue_all, radii_all
+    
+Xnorm, Xmod, yp, y, radii = smooth_eval()
+print(yp)
+print(len(yp))
+print(len(yp[0]))
+print(len(radii))
+print(len(radii[0]))
+print(f"ACR: {sum(radii)/len(radii)}")
+
+raise KeyboardInterrupt
+
 
 # Begin testing evaluation
 # Probably gonna want to turn this into a function later
