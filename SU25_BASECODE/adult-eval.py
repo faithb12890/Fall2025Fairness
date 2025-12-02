@@ -54,46 +54,46 @@ test_loader = DataLoader(test_set, batch_size=10, shuffle=False)
 # Evaluation of batch based smoothing
 def smooth_eval():
     Xnorm_all = torch.tensor([])
-    Xmod_all = torch.tensor([])
-    yp_all = []
-    radii_all = []
-    ytrue_all = []
-    x = 0
+    attributes_all = []
+    radii = []
+
     for X, y in test_loader:
         sigma = 0.2
         n_samples = 1000
-        batch = len(X)
-        Xnorm, Xmod = smooth_norm_batch(X, smooth = True, sigma=sigma, n_samples=n_samples)
-        # Note: Xnorm, Xmod both [batch size, n_samples, 104]
-        yp = []
-        radii = []
+        Xnorm, Xmod, batch_attr = smooth_norm_batch(X, smooth=True, sigma=sigma, n_samples=n_samples)
+        # Note: Xnorm [batch size, 104], Xmod [batch size, n_samples, 104]
+        # Attributes is [age, marital-status, race, sex, y, yp, radius]
+        # y, yp, radius all set in the next for loop        
 
-        for X, ytrue in zip(Xmod, y):
+        for X, ytrue, attr_indiv in zip(Xmod, y, batch_attr):
+            attributes_all.append(attr_indiv)
             probs = torch.softmax(model_dnn_2(X), dim=1)  # Shape: [1000,2]
             avg_probs = probs.mean(dim=0)        
             label = torch.argmax(avg_probs)
             best_scores = torch.topk(avg_probs, 2)          
             radius = sigma * (phi_inverse(torch.tensor(best_scores.values[0].item()), 0) - phi_inverse(torch.tensor(best_scores.values[1].item()), 0)) / 2
-            radii.append(radius.item())
-            yp.append(label.item())
-            
-            
+            radius = radius.item()
+
             if label != ytrue.item():
                 radius = 0.0
-        
-        radii_all.extend(radii)
-        yp_all.extend(yp)
-        ytrue_all.extend(y.tolist())
+
+            radii.append(radius)
+            attributes_all[-1][4] = ytrue.item()
+            attributes_all[-1][5] = label.item()
+            attributes_all[-1][6] = radius
+
         Xnorm_all = torch.cat((Xnorm_all,Xnorm),0)
-        Xmod_all = torch.cat((Xmod_all,Xmod),0)
     
-    return Xnorm_all, Xmod_all, yp_all, ytrue_all, radii_all
+    return Xnorm_all, attributes_all, radii
     
-Xnorm, Xmod, yp, y, radii = smooth_eval()
-print(yp)
-print(len(yp))
-print(len(radii))
-print(f"ACR: {sum(radii)/len(radii)}")
+Xnorm, attributes, radii = smooth_eval()
+
+radii_noinf = []
+for rad in radii:
+    if math.isfinite(rad):
+        radii_noinf.append(rad)
+
+print(f"ACR excluding infinite values: {sum(radii_noinf)/len(radii_noinf)}")
 
 raise KeyboardInterrupt
 

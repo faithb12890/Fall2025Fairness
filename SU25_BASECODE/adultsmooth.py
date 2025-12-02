@@ -375,14 +375,16 @@ def smooth_norm_batch(X, smooth = False, sigma = 0.2, n_samples=1000):
     if smooth == False:
         return Xnorm
     else:
-        Xnorm_array = torch.tensor([])
         Xmod_array = torch.tensor([])
-        for X in Xnorm:
-            X = X.expand(n_samples,-1)  # Shape: [n_samples, 104]
-            X = X.expand(1,-1,-1)       # Shape: [1, n_samples, 104]
-            Xnorm_array = torch.cat((Xnorm_array,X),0)  # Shape: [batch size, n_samples, 104]
-            epsilon = (sigma*torch.rand_like(X))*smoothvars
-            X = X + epsilon
-            Xmod_array = torch.cat((Xmod_array,X),0)    # Shape: [batch size, n_samples, 104]
-            
-        return Xnorm_array, Xmod_array
+        attributes = []
+        for indiv in Xnorm:
+            # Add attributes for current individual to the attribute list
+            # [age, marital-status, race, sex, y, yp, rad]
+            # y, yp, rad to be set later once modified individuals are processed by model
+            attributes.append([indiv[0].item(), torch.argmax(indiv[26:33]).item(), torch.argmax(indiv[53:58]).item(), torch.argmax(indiv[58:60]).item(), 0, 0, 0])
+            indiv = indiv.expand(n_samples,-1)  # Shape: [n_samples, 104]
+            indiv = indiv.expand(1,-1,-1)       # Shape: [1, n_samples, 104]
+            epsilon = (sigma*torch.rand_like(indiv))*smoothvars
+            indiv = indiv + epsilon
+            Xmod_array = torch.cat((Xmod_array,indiv),0)    # Shape: [batch size, n_samples, 104]  
+        return Xnorm, Xmod_array, attributes
